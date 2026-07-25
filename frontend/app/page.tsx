@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Header } from "./components/Header";
 import { HeroSection } from "./components/HeroSection";
 import { RepoInput } from "./components/RepoInput";
@@ -18,7 +18,20 @@ export default function Home() {
   const [completedNodes, setCompletedNodes] = useState<PipelineNode[]>([]);
   const [liveEvents, setLiveEvents] = useState<string[]>([]);
 
-  const simulateAudit = useCallback((repoName: string) => {
+  const intervalsRef = useRef<NodeJS.Timeout[]>([]);
+
+  // Cleanup intervals on unmount
+  useEffect(() => {
+    return () => {
+      intervalsRef.current.forEach(clearInterval);
+    };
+  }, []);
+
+  function simulateAudit(repoName: string) {
+    // Clear any previous intervals
+    intervalsRef.current.forEach(clearInterval);
+    intervalsRef.current = [];
+
     setIsRunning(true);
     setAudit(null);
     setCompletedNodes([]);
@@ -56,35 +69,35 @@ export default function Home() {
     let currentNodeIndex = 0;
     let eventIndex = 0;
 
-    // Progress events
     const eventInterval = setInterval(() => {
       if (eventIndex < eventSequence.length) {
-        setLiveEvents((prev) => [...prev, eventSequence[eventIndex]]);
+        const evt = eventSequence[eventIndex];
+        setLiveEvents((prev) => [...prev, evt]);
         eventIndex++;
       }
     }, 400);
 
-    // Progress nodes
     const nodeInterval = setInterval(() => {
       if (currentNodeIndex < nodes.length - 1) {
-        setCompletedNodes((prev) => [...prev, nodes[currentNodeIndex]]);
+        const completedNode = nodes[currentNodeIndex];
+        setCompletedNodes((prev) => [...prev, completedNode]);
         currentNodeIndex++;
         setActiveNode(nodes[currentNodeIndex]);
       } else {
         clearInterval(nodeInterval);
         clearInterval(eventInterval);
-        setCompletedNodes(nodes);
+        setCompletedNodes([...nodes]);
         setActiveNode("done");
         setIsRunning(false);
         setAudit({
           ...mockAuditRun,
           repo_name: repoName,
-          started_at: new Date(Date.now() - 262000).toISOString(),
-          completed_at: new Date().toISOString(),
         });
       }
     }, 900);
-  }, []);
+
+    intervalsRef.current = [eventInterval, nodeInterval];
+  }
 
   return (
     <div className="min-h-screen bg-[var(--color-background)] relative">
@@ -120,7 +133,7 @@ export default function Home() {
 
           {/* Results dashboard */}
           {audit && (
-            <div className="space-y-8 animate-in fade-in duration-700">
+            <div className="space-y-8">
               <StatsGrid audit={audit} />
 
               <div className="grid grid-cols-1 xl:grid-cols-5 gap-6">
