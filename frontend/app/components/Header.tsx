@@ -4,36 +4,38 @@ import { Shield, Activity } from "lucide-react";
 
 export function Header() {
   return (
-    <header className="sticky top-0 z-50 border-b border-[var(--color-border)]/30 bg-[var(--color-background)]/80 backdrop-blur-xl">
+    <header className="sticky top-0 z-50 border-b border-[var(--color-border)]/10 bg-[var(--color-background)]/70 backdrop-blur-2xl">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           <div className="flex items-center gap-3">
-            <div className="relative">
-              <Shield className="w-8 h-8 text-[var(--color-accent)]" />
-              <div className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 bg-[var(--color-accent)] rounded-full animate-pulse-glow" />
+            <div className="relative p-2 rounded-xl bg-[var(--color-accent)]/10 border border-[var(--color-accent)]/20">
+              <Shield className="w-5 h-5 text-[var(--color-accent)]" />
+              <div className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-[var(--color-accent)] rounded-full animate-pulse" />
             </div>
             <div>
-              <h1 className="text-lg font-bold tracking-tight text-[var(--color-foreground)]">
+              <h1 className="text-base font-bold tracking-tight text-[var(--color-foreground)]">
                 Code Auditor
               </h1>
-              <p className="text-xs text-[var(--color-muted-foreground)] font-mono">
-                Autonomous Security Scanner
+              <p className="text-[10px] text-[var(--color-muted-foreground)] font-mono tracking-wider uppercase">
+                Autonomous Security
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-4">
-            <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full bg-[var(--color-muted)]/50 border border-[var(--color-border)]/30">
-              <Activity className="w-3.5 h-3.5 text-[var(--color-accent)]" />
-              <span className="text-xs font-mono text-[var(--color-muted-foreground)]">
-                System Online
+          <div className="flex items-center gap-3">
+            <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[var(--color-muted)]/30 border border-[var(--color-border)]/20">
+              <div className="relative">
+                <Activity className="w-3 h-3 text-[var(--color-accent)]" />
+              </div>
+              <span className="text-[10px] font-mono text-[var(--color-muted-foreground)]">
+                ONLINE
               </span>
             </div>
             <a
               href="https://github.com/asheth2310/code-auditor"
               target="_blank"
               rel="noopener noreferrer"
-              className="p-2 rounded-lg hover:bg-[var(--color-muted)]/50 transition-colors cursor-pointer"
+              className="p-2 rounded-xl hover:bg-[var(--color-muted)]/30 transition-colors cursor-pointer border border-transparent hover:border-[var(--color-border)]/20"
               aria-label="View on GitHub"
             >
               <svg className="w-5 h-5 text-[var(--color-muted-foreground)] hover:text-[var(--color-foreground)] transition-colors" viewBox="0 0 24 24" fill="currentColor">
