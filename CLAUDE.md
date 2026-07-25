@@ -1,0 +1,11 @@
+# Project Rules
+- Python 3.11+ only
+- Use LangGraph for multi-agent orchestration
+- Use FastMCP (mcp library) for Model Context Protocol tooling
+- Use docker-py for sandboxed code execution
+- Use pytest for all testing
+- Use PyGithub for GitHub API operations
+- Use pydantic-settings for configuration
+- Type hints required on all functions
+- Docstrings required on all public classes and methods
+- All generated/exploit code MUST run inside Docker containers, never on host
