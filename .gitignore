@@ -1,6 +1,9 @@
 # Environment
 .env
 
+# Kiro settings (contains API keys)
+.kiro/settings/
+
 # Python
 __pycache__/
 *.py[cod]
