@@ -168,6 +168,11 @@ export default function Home() {
     // Call real backend
     const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
+    // Scroll to results area
+    setTimeout(() => {
+      document.getElementById("audit-results")?.scrollIntoView({ behavior: "smooth" });
+    }, 100);
+
     fetch(`${API_URL}/audit`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -390,7 +395,7 @@ export default function Home() {
 
         {/* ─── LIVE AUDIT RESULTS ─── */}
         {(isAuditing || auditDone) && (
-          <section className="px-6 -mt-8 mb-16">
+          <section id="audit-results" className="px-6 -mt-8 mb-16">
             <div className="max-w-4xl mx-auto space-y-6">
               {/* Pipeline Progress */}
               <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-card)] p-6">
