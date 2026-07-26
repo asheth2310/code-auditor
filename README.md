@@ -1,4 +1,4 @@
-# 🛡️ Autonomous Multi-Agent Code Auditor & Auto-Patcher
+# 🛡️ PatchForge — Autonomous Security Auditor & Auto-Patcher
 
 An autonomous multi-agent pipeline that scans a GitHub repository for security vulnerabilities, reproduces them with failing tests in Docker sandboxes, generates patches, verifies fixes, and opens Pull Requests — all without human intervention.
 

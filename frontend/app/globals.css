@@ -1,85 +1,98 @@
 @import "tailwindcss";
 
 :root {
-  --color-primary: #1E293B;
-  --color-on-primary: #FFFFFF;
-  --color-secondary: #334155;
-  --color-accent: #22C55E;
-  --color-background: #0F172A;
-  --color-foreground: #F8FAFC;
-  --color-muted: #272F42;
-  --color-muted-foreground: #94A3B8;
-  --color-border: #475569;
-  --color-destructive: #EF4444;
-  --color-warning: #F59E0B;
-  --color-ring: #22C55E;
-  --color-card: #1E293B;
-  --color-card-foreground: #F8FAFC;
-  --font-sans: 'Inter', system-ui, sans-serif;
-  --font-mono: 'Fira Code', 'Consolas', monospace;
+  --bg: #050a14;
+  --bg-card: #0c1425;
+  --bg-elevated: #111d33;
+  --accent: #00e599;
+  --accent-dim: #00e59940;
+  --accent-glow: #00e59920;
+  --text: #e8f0f8;
+  --text-muted: #7a8ba3;
+  --text-dim: #4a5f78;
+  --border: #1a2a42;
+  --destructive: #ff4d6a;
+  --warning: #ffb443;
+  --info: #4da6ff;
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
 }
 
-* {
-  box-sizing: border-box;
+* { box-sizing: border-box; }
+
+html {
+  scroll-behavior: smooth;
 }
 
 body {
   font-family: var(--font-sans);
-  background: var(--color-background);
-  color: var(--color-foreground);
+  background: var(--bg);
+  color: var(--text);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
 }
 
-/* Custom scrollbar */
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
-::-webkit-scrollbar-track {
-  background: var(--color-background);
-}
-::-webkit-scrollbar-thumb {
-  background: var(--color-border);
-  border-radius: 3px;
-}
-::-webkit-scrollbar-thumb:hover {
-  background: var(--color-muted-foreground);
+::selection {
+  background: var(--accent-dim);
+  color: var(--text);
 }
 
-/* Glow effects */
-.glow-green {
-  text-shadow: 0 0 10px rgba(34, 197, 94, 0.5), 0 0 20px rgba(34, 197, 94, 0.2);
-}
-.glow-red {
-  text-shadow: 0 0 10px rgba(239, 68, 68, 0.5), 0 0 20px rgba(239, 68, 68, 0.2);
-}
-.glow-border {
-  box-shadow: 0 0 15px rgba(34, 197, 94, 0.1), inset 0 0 15px rgba(34, 197, 94, 0.05);
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-10px); }
 }
 
-/* Pulse animation */
-@keyframes pulse-glow {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.5; }
-}
-.animate-pulse-glow {
-  animation: pulse-glow 2s ease-in-out infinite;
+@keyframes glow-pulse {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
 }
 
-/* Scan line effect */
-@keyframes scanline {
-  0% { transform: translateY(-100%); }
-  100% { transform: translateY(100vh); }
+@keyframes slide-up {
+  from { opacity: 0; transform: translateY(30px); }
+  to { opacity: 1; transform: translateY(0); }
 }
-.scanline::after {
+
+@keyframes flow-line {
+  0% { stroke-dashoffset: 100; }
+  100% { stroke-dashoffset: 0; }
+}
+
+.animate-float { animation: float 6s ease-in-out infinite; }
+.animate-glow { animation: glow-pulse 2s ease-in-out infinite; }
+.animate-slide-up { animation: slide-up 0.8s ease-out forwards; opacity: 0; }
+
+.glass {
+  background: rgba(12, 20, 37, 0.7);
+  backdrop-filter: blur(20px);
+  border: 1px solid var(--border);
+}
+
+.glow-accent {
+  box-shadow: 0 0 30px var(--accent-glow), 0 0 60px var(--accent-glow);
+}
+
+.text-glow {
+  text-shadow: 0 0 20px var(--accent-dim), 0 0 40px var(--accent-glow);
+}
+
+.gradient-border {
+  border: 1px solid transparent;
+  background-clip: padding-box;
+  position: relative;
+}
+.gradient-border::before {
   content: '';
   position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 2px;
-  background: linear-gradient(90deg, transparent, rgba(34, 197, 94, 0.3), transparent);
-  animation: scanline 3s linear infinite;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(135deg, var(--accent-dim), transparent 50%, var(--accent-dim));
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  mask-composite: exclude;
   pointer-events: none;
 }
