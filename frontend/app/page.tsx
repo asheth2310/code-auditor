@@ -230,6 +230,42 @@ export default function Home() {
               </a>
             </div>
 
+            {/* Repo Input */}
+            <div className="mt-10 max-w-xl mx-auto">
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  const input = (e.target as HTMLFormElement).elements.namedItem("repo") as HTMLInputElement;
+                  const val = input?.value?.trim();
+                  if (val) {
+                    alert(`🛡️ Audit requested for: ${val}\n\nTo run this for real:\n\n1. Clone the repo locally\n2. Set up .env with GITHUB_MODELS_TOKEN\n3. Run: python -m code_auditor.main --repo ${val} --verbose\n\nSee README for full setup.`);
+                  }
+                }}
+                className="relative group"
+              >
+                <div className="absolute -inset-1 rounded-2xl bg-gradient-to-r from-[var(--accent)]/20 via-transparent to-[var(--accent)]/20 blur-lg opacity-0 group-focus-within:opacity-100 transition-opacity duration-500" />
+                <div className="relative flex items-center gap-3 rounded-2xl border border-[var(--border)] bg-[var(--bg-card)] px-5 py-4 focus-within:border-[var(--accent)]/40 transition-all">
+                  <IconGithub className="w-5 h-5 text-[var(--text-dim)] shrink-0" />
+                  <input
+                    name="repo"
+                    type="text"
+                    placeholder="owner/repository"
+                    className="flex-1 bg-transparent text-[var(--text)] placeholder:text-[var(--text-dim)] font-mono text-sm outline-none"
+                  />
+                  <button
+                    type="submit"
+                    className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[var(--accent)] text-[var(--bg)] font-semibold text-sm hover:shadow-lg hover:shadow-[var(--accent-dim)] transition-all cursor-pointer hover:scale-[1.02] active:scale-[0.98]"
+                  >
+                    <IconShield className="w-4 h-4" />
+                    Audit
+                  </button>
+                </div>
+              </form>
+              <p className="text-center text-[11px] text-[var(--text-dim)] mt-3 font-mono">
+                Enter a GitHub repo to scan • Requires local backend running
+              </p>
+            </div>
+
             {/* Terminal preview */}
             <div className="mt-12 max-w-2xl mx-auto">
               <div className="rounded-2xl overflow-hidden border border-[var(--border)] bg-[var(--bg-card)]">
