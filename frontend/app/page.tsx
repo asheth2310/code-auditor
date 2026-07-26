@@ -149,62 +149,91 @@ export default function Home() {
   const [currentStep, setCurrentStep] = useState<string | null>(null);
   const [logEvents, setLogEvents] = useState<string[]>([]);
   const [auditDone, setAuditDone] = useState(false);
+  const [auditResults, setAuditResults] = useState<{
+    vulnerabilities: number;
+    prs: number;
+    prUrls: string[];
+    fixRate: number;
+    error?: string | null;
+  } | null>(null);
 
   function startAudit(repoName: string) {
     setIsAuditing(true);
     setAuditRepo(repoName);
     setCompletedSteps([]);
     setCurrentStep("clone");
-    setLogEvents([]);
+    setLogEvents([`[System] Starting PatchForge for ${repoName}...`]);
     setAuditDone(false);
 
-    const steps = PIPELINE_STEPS.map((s) => s.id);
-    const events = [
-      `[System] Starting PatchForge for ${repoName}...`,
-      `[Clone] Cloning ${repoName}...`,
-      `[Clone] Found 8 Python files`,
-      `[Audit] Analyzing with GPT-4o via GitHub Models...`,
-      `[Audit] Found 3 vulnerabilities in 8 files`,
-      `[Exploit] Generating pytest for sql_injection`,
-      `[Exploit] Test created — proves vuln is exploitable`,
-      `[Sandbox] Running in Docker (network: none, mem: 512MB)`,
-      `[Sandbox] exit_code=1 — vulnerability confirmed ⚠️`,
-      `[Patch] Generating fix with GPT-4o (Attempt 1)`,
-      `[Patch] Parameterized query applied`,
-      `[Verify] Running exploit against patched code...`,
-      `[Verify] exit_code=0 — fix verified ✓`,
-      `[PR] Creating branch fix/sql_injection-a8f3...`,
-      `[PR] → github.com/${repoName}/pull/1 opened ✓`,
-      `[System] ✓ Audit complete — 3 vulns found, 3 PRs opened`,
-    ];
+    // Call real backend
+    const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
-    let stepIdx = 0;
-    let eventIdx = 0;
+    fetch(`${API_URL}/audit`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ repo_name: repoName }),
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        const auditId = data.audit_id;
+        setLogEvents((prev) => [...prev, `[System] Audit ${auditId} started, polling for results...`]);
 
-    const eventTimer = setInterval(() => {
-      if (eventIdx < events.length) {
-        setLogEvents((prev) => [...prev, events[eventIdx]]);
-        eventIdx++;
-      }
-    }, 350);
+        // Poll for results
+        const pollInterval = setInterval(async () => {
+          try {
+            const res = await fetch(`${API_URL}/audit/${auditId}`);
+            const result = await res.json();
 
-    const stepTimer = setInterval(() => {
-      if (stepIdx < steps.length) {
-        setCompletedSteps((prev) => [...prev, steps[stepIdx]]);
-        stepIdx++;
-        if (stepIdx < steps.length) {
-          setCurrentStep(steps[stepIdx]);
-        } else {
-          setCurrentStep(null);
-          setAuditDone(true);
-          setIsAuditing(false);
-          clearInterval(stepTimer);
-          clearInterval(eventTimer);
-          // flush remaining events
-          setLogEvents(events);
-        }
-      }
-    }, 800);
+            if (result.event_log && result.event_log.length > 0) {
+              setLogEvents([`[System] Starting PatchForge for ${repoName}...`, ...result.event_log]);
+            }
+
+            // Update pipeline steps based on events
+            const events = result.event_log || [];
+            const newCompleted: string[] = [];
+            for (const evt of events) {
+              if (evt.includes("[CloneRepo]")) { if (!newCompleted.includes("clone")) newCompleted.push("clone"); }
+              if (evt.includes("[Auditor]")) { if (!newCompleted.includes("audit")) newCompleted.push("audit"); }
+              if (evt.includes("[Exploit]")) { if (!newCompleted.includes("exploit")) newCompleted.push("exploit"); }
+              if (evt.includes("[ExploitSandbox]")) { if (!newCompleted.includes("sandbox")) newCompleted.push("sandbox"); }
+              if (evt.includes("[Patcher]")) { if (!newCompleted.includes("patch")) newCompleted.push("patch"); }
+              if (evt.includes("[VerifySandbox]")) { if (!newCompleted.includes("verify")) newCompleted.push("verify"); }
+              if (evt.includes("[PRCreator]")) { if (!newCompleted.includes("pr")) newCompleted.push("pr"); }
+            }
+            setCompletedSteps(newCompleted);
+            if (newCompleted.length > 0 && newCompleted.length < 7) {
+              const allIds = PIPELINE_STEPS.map(s => s.id);
+              const nextIdx = newCompleted.length;
+              if (nextIdx < allIds.length) setCurrentStep(allIds[nextIdx]);
+            }
+
+            if (result.status === "completed" || result.status === "failed") {
+              clearInterval(pollInterval);
+              setCompletedSteps(PIPELINE_STEPS.map(s => s.id));
+              setCurrentStep(null);
+              setAuditDone(true);
+              setIsAuditing(false);
+
+              // Store real results
+              setAuditResults({
+                vulnerabilities: result.vulnerabilities?.length || 0,
+                prs: result.pr_urls?.length || 0,
+                prUrls: result.pr_urls || [],
+                fixRate: result.vulnerabilities?.length > 0
+                  ? Math.round((result.pr_urls?.length || 0) / result.vulnerabilities.length * 100)
+                  : 0,
+                error: result.error,
+              });
+            }
+          } catch (err) {
+            console.error("Poll error:", err);
+          }
+        }, 3000);
+      })
+      .catch((err) => {
+        setLogEvents((prev) => [...prev, `[Error] Failed to connect to backend: ${err.message}. Make sure the API is running on ${API_URL}`]);
+        setIsAuditing(false);
+      });
   }
 
   return (
@@ -441,20 +470,49 @@ export default function Home() {
               </div>
 
               {/* Results summary */}
-              {auditDone && (
-                <div className="grid grid-cols-3 gap-4">
-                  <div className="rounded-xl p-5 bg-[var(--bg-card)] border border-[var(--border)] text-center">
-                    <p className="text-2xl font-black text-[var(--destructive)] font-mono">3</p>
-                    <p className="text-[10px] text-[var(--text-dim)] uppercase tracking-wider mt-1">Vulnerabilities</p>
+              {auditDone && auditResults && (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-3 gap-4">
+                    <div className="rounded-xl p-5 bg-[var(--bg-card)] border border-[var(--border)] text-center">
+                      <p className="text-2xl font-black text-[var(--destructive)] font-mono">{auditResults.vulnerabilities}</p>
+                      <p className="text-[10px] text-[var(--text-dim)] uppercase tracking-wider mt-1">Vulnerabilities</p>
+                    </div>
+                    <div className="rounded-xl p-5 bg-[var(--bg-card)] border border-[var(--border)] text-center">
+                      <p className="text-2xl font-black text-[var(--accent)] font-mono">{auditResults.prs}</p>
+                      <p className="text-[10px] text-[var(--text-dim)] uppercase tracking-wider mt-1">PRs Created</p>
+                    </div>
+                    <div className="rounded-xl p-5 bg-[var(--bg-card)] border border-[var(--border)] text-center">
+                      <p className="text-2xl font-black text-[var(--accent)] font-mono">{auditResults.fixRate}%</p>
+                      <p className="text-[10px] text-[var(--text-dim)] uppercase tracking-wider mt-1">Fix Rate</p>
+                    </div>
                   </div>
-                  <div className="rounded-xl p-5 bg-[var(--bg-card)] border border-[var(--border)] text-center">
-                    <p className="text-2xl font-black text-[var(--accent)] font-mono">3</p>
-                    <p className="text-[10px] text-[var(--text-dim)] uppercase tracking-wider mt-1">PRs Created</p>
-                  </div>
-                  <div className="rounded-xl p-5 bg-[var(--bg-card)] border border-[var(--border)] text-center">
-                    <p className="text-2xl font-black text-[var(--accent)] font-mono">100%</p>
-                    <p className="text-[10px] text-[var(--text-dim)] uppercase tracking-wider mt-1">Fix Rate</p>
-                  </div>
+
+                  {/* Real PR links */}
+                  {auditResults.prUrls.length > 0 && (
+                    <div className="rounded-xl p-5 bg-[var(--bg-card)] border border-[var(--accent)]/20 space-y-3">
+                      <p className="text-xs font-bold text-[var(--accent)] uppercase tracking-wider">Pull Requests Opened</p>
+                      {auditResults.prUrls.map((url, i) => (
+                        <a
+                          key={i}
+                          href={url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-[var(--bg-elevated)] border border-[var(--border)] hover:border-[var(--accent)]/40 transition-all cursor-pointer group"
+                        >
+                          <IconGitPR className="w-4 h-4 text-[var(--accent)]" />
+                          <span className="text-xs font-mono text-[var(--text-muted)] group-hover:text-[var(--text)] transition-colors truncate">{url}</span>
+                          <span className="ml-auto text-[var(--accent)] text-xs">→</span>
+                        </a>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Error */}
+                  {auditResults.error && (
+                    <div className="rounded-xl p-4 bg-[var(--destructive)]/10 border border-[var(--destructive)]/20">
+                      <p className="text-xs font-mono text-[var(--destructive)]">{auditResults.error}</p>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
