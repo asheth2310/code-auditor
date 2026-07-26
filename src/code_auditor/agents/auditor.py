@@ -53,10 +53,22 @@ def auditor_node(state: AuditorState) -> dict:
     
     source_files = state["source_files"]
     
-    # Build source code context for the LLM
+    # Build source code context — limit to ~6000 tokens (~24000 chars) for GitHub Models
     code_context = ""
+    char_limit = 24000
+    files_included = 0
     for file_path, content in source_files.items():
-        code_context += f"\n--- FILE: {file_path} ---\n{content}\n"
+        entry = f"\n--- FILE: {file_path} ---\n{content}\n"
+        if len(code_context) + len(entry) > char_limit:
+            break
+        code_context += entry
+        files_included += 1
+    
+    if files_included == 0 and source_files:
+        # At least include one file, truncated
+        first_path = next(iter(source_files))
+        code_context = f"\n--- FILE: {first_path} ---\n{source_files[first_path][:char_limit]}\n"
+        files_included = 1
     
     llm = _get_llm()
     
@@ -82,5 +94,5 @@ def auditor_node(state: AuditorState) -> dict:
     return {
         "vulnerabilities": vulnerabilities,
         "current_vuln_index": 0,
-        "event_log": [f"[Auditor] Found {len(vulnerabilities)} vulnerabilities in {len(source_files)} files"]
+        "event_log": [f"[Auditor] Scanned {files_included}/{len(source_files)} files, found {len(vulnerabilities)} vulnerabilities"]
     }
