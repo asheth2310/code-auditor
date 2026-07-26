@@ -1,7 +1,7 @@
 """Auditor Agent — performs static security analysis on source code."""
 import json
 import logging
-from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_openai import ChatOpenAI
 from langchain_core.messages import SystemMessage, HumanMessage
 from ..state import AuditorState
 from ..config import get_settings
@@ -35,6 +35,18 @@ For each vulnerability found, respond with a JSON array of objects:
 If no vulnerabilities are found, return an empty array: []
 RESPOND ONLY WITH THE JSON ARRAY. No markdown, no explanation."""
 
+
+def _get_llm():
+    """Create LLM using GitHub Models inference endpoint."""
+    settings = get_settings()
+    return ChatOpenAI(
+        model="openai/gpt-4o",
+        api_key=settings.github_models_token,
+        base_url="https://models.github.ai/inference/v1",
+        temperature=0,
+    )
+
+
 def auditor_node(state: AuditorState) -> dict:
     """LangGraph node that audits source code for security vulnerabilities."""
     logger.info("Auditor agent starting analysis...")
@@ -46,12 +58,7 @@ def auditor_node(state: AuditorState) -> dict:
     for file_path, content in source_files.items():
         code_context += f"\n--- FILE: {file_path} ---\n{content}\n"
     
-    settings = get_settings()
-    llm = ChatGoogleGenerativeAI(
-        model="gemini-2.0-flash",
-        google_api_key=settings.google_api_key,
-        temperature=0,
-    )
+    llm = _get_llm()
     
     messages = [
         SystemMessage(content=AUDIT_SYSTEM_PROMPT),
@@ -61,7 +68,6 @@ def auditor_node(state: AuditorState) -> dict:
     response = llm.invoke(messages)
     
     try:
-        # Parse response — strip markdown code fences if present
         content = response.content.strip()
         if content.startswith("```"):
             content = content.split("\n", 1)[1]

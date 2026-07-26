@@ -1,6 +1,6 @@
 """Patch Agent."""
 import logging
-from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_openai import ChatOpenAI
 from langchain_core.messages import SystemMessage, HumanMessage
 from ..state import AuditorState
 from ..config import get_settings
@@ -9,6 +9,17 @@ logger = logging.getLogger(__name__)
 
 PATCHER_SYSTEM_PROMPT = """You are a security engineer. Fix the vulnerability in the provided source code.
 Return ONLY the complete fixed source file. No markdown, no explanation."""
+
+
+def _get_llm():
+    settings = get_settings()
+    return ChatOpenAI(
+        model="openai/gpt-4o",
+        api_key=settings.github_models_token,
+        base_url="https://models.github.ai/inference/v1",
+        temperature=0,
+    )
+
 
 def patcher_node(state: AuditorState) -> dict:
     """LangGraph node that attempts to patch the vulnerability."""
@@ -26,12 +37,7 @@ def patcher_node(state: AuditorState) -> dict:
     patch_attempts = state.get("patch_attempts", 0)
     sandbox_stderr = state.get("sandbox_stderr", "")
     
-    settings = get_settings()
-    llm = ChatGoogleGenerativeAI(
-        model="gemini-2.0-flash",
-        google_api_key=settings.google_api_key,
-        temperature=0,
-    )
+    llm = _get_llm()
     
     prompt = f"Vulnerability Details:\n{current_vuln}\n\nOriginal Source Code:\n{source_code}"
     if patch_attempts > 0 and sandbox_stderr:
