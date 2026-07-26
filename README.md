@@ -10,6 +10,109 @@ An autonomous multi-agent pipeline that scans a GitHub repository for security v
 [GitHub Pull Request] <── [Verify Fix] <── [Patch Agent] <────────┘
 ```
 
+## 🔄 Pipeline Flow
+
+```mermaid
+flowchart TD
+    A[📦 Input: GitHub Repo URL] --> B[🔀 Clone Repository]
+    B --> C[🔍 AI Security Audit]
+    C -->|No vulns found| Z[✅ Clean - No Issues]
+    C -->|Vulnerabilities found| D[🐛 Generate Exploit Test]
+    D --> E[🐳 Run in Docker Sandbox]
+    E -->|Test passes - false positive| F[⏭️ Skip to Next Vuln]
+    E -->|Test fails - vuln confirmed| G[🔧 Generate Patch]
+    G --> H[🐳 Verify Patch in Sandbox]
+    H -->|Test passes - fix works| I[📝 Create Pull Request]
+    H -->|Test fails & retries < 3| G
+    H -->|Test fails & retries exhausted| I
+    I --> J{More vulnerabilities?}
+    F --> J
+    J -->|Yes| D
+    J -->|No| K[🏁 Audit Complete]
+
+    style A fill:#1e293b,stroke:#00e599,color:#fff
+    style B fill:#1e293b,stroke:#a78bfa,color:#fff
+    style C fill:#1e293b,stroke:#4da6ff,color:#fff
+    style D fill:#1e293b,stroke:#ffb443,color:#fff
+    style E fill:#1e293b,stroke:#ff6b8a,color:#fff
+    style G fill:#1e293b,stroke:#00e599,color:#fff
+    style H fill:#1e293b,stroke:#00d4aa,color:#fff
+    style I fill:#1e293b,stroke:#00e599,color:#fff
+    style K fill:#00e599,stroke:#00e599,color:#000
+    style Z fill:#1e293b,stroke:#4da6ff,color:#fff
+```
+
+## 🧬 Architecture Diagram
+
+```mermaid
+graph LR
+    subgraph Frontend
+        UI[Next.js + Three.js]
+    end
+
+    subgraph Backend
+        API[FastAPI Server]
+        LG[LangGraph Pipeline]
+        A1[Auditor Agent]
+        A2[Exploit Agent]
+        A3[Patcher Agent]
+        A4[PR Creator Agent]
+    end
+
+    subgraph External
+        GH[GitHub API]
+        GM[GitHub Models / GPT-4o]
+        DK[Docker Sandbox]
+    end
+
+    UI -->|POST /audit| API
+    API --> LG
+    LG --> A1
+    LG --> A2
+    LG --> A3
+    LG --> A4
+    A1 --> GM
+    A2 --> GM
+    A3 --> GM
+    A2 --> DK
+    A3 --> DK
+    A4 --> GH
+    LG --> GH
+
+    style UI fill:#0c1425,stroke:#00e599,color:#fff
+    style API fill:#0c1425,stroke:#4da6ff,color:#fff
+    style LG fill:#0c1425,stroke:#a78bfa,color:#fff
+    style GH fill:#0c1425,stroke:#fff,color:#fff
+    style GM fill:#0c1425,stroke:#ffb443,color:#fff
+    style DK fill:#0c1425,stroke:#ff6b8a,color:#fff
+```
+
+## 🔐 Docker Sandbox Architecture
+
+```mermaid
+graph TB
+    subgraph Host Machine
+        P[LangGraph Pipeline] --> TD[Temp Directory]
+        TD -->|bind mount| DC[Docker Container]
+    end
+
+    subgraph Docker Container
+        DC --> NW[🚫 Network: Disabled]
+        DC --> MEM[💾 Memory: 512MB Max]
+        DC --> TO[⏱️ Timeout: 30 Seconds]
+        DC --> RUN[▶️ python -m pytest test_exploit.py]
+        RUN --> OUT[stdout/stderr + exit_code]
+    end
+
+    OUT -->|Results| P
+    DC -->|Auto-removed| CLEAN[🗑️ Cleanup]
+
+    style DC fill:#1e293b,stroke:#ff6b8a,color:#fff
+    style NW fill:#2d1b1b,stroke:#ff6b8a,color:#ff6b8a
+    style MEM fill:#2d1b1b,stroke:#ff6b8a,color:#ff6b8a
+    style TO fill:#2d1b1b,stroke:#ff6b8a,color:#ff6b8a
+```
+
 ## 🚀 Features
 
 - **Zero False-Positive PRs** — Only opens Pull Requests for security fixes verified by passing tests in clean sandboxes
