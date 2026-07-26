@@ -187,27 +187,98 @@ export default function Home() {
 
         {/* LIVE AUDIT */}
         {(isAuditing || auditDone) && (
-          <section id="audit-live" className="px-6 py-20">
+          <section id="audit-live" className="px-6 py-20 min-h-screen">
             <div className="max-w-4xl mx-auto space-y-8">
-              {/* Pipeline steps */}
-              <div className="flex items-center justify-between gap-1 p-4 rounded-2xl bg-white/[0.03] border border-white/10 backdrop-blur-md">
-                {STEPS.map((step) => {
+
+              {/* Header */}
+              <div className="text-center space-y-2">
+                <p className="text-[10px] font-bold text-[#00e599] uppercase tracking-[0.3em]">
+                  {auditDone ? "Audit Complete" : "Scanning Repository"}
+                </p>
+                <h2 className="text-2xl font-bold text-white">
+                  {auditDone ? "Results" : "PatchForge is working..."}
+                </h2>
+              </div>
+
+              {/* Pipeline Cards */}
+              <div className="grid gap-3">
+                {STEPS.map((step, idx) => {
                   const done = completedSteps.includes(step.id);
                   const active = currentStep === step.id;
+                  const pending = !done && !active;
                   return (
-                    <div key={step.id} className="flex flex-col items-center gap-2 flex-1">
-                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-500 ${
-                        done ? "bg-[#00e599]/20 border border-[#00e599]/40" :
-                        active ? "bg-[#00e599]/10 border border-[#00e599]/60 shadow-[0_0_20px_#00e59930]" :
-                        "bg-white/5 border border-white/10"
+                    <div
+                      key={step.id}
+                      className={`relative flex items-center gap-4 p-4 rounded-2xl border backdrop-blur-md transition-all duration-700 ${
+                        active
+                          ? "bg-[#00e599]/[0.05] border-[#00e599]/30 shadow-[0_0_40px_#00e59915] scale-[1.01]"
+                          : done
+                          ? "bg-white/[0.02] border-[#00e599]/20"
+                          : "bg-white/[0.01] border-white/5 opacity-40"
+                      }`}
+                      style={{ transitionDelay: `${idx * 50}ms` }}
+                    >
+                      {/* Step number */}
+                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-[10px] font-black shrink-0 ${
+                        done ? "bg-[#00e599]/20 text-[#00e599]" :
+                        active ? "bg-[#00e599]/10 text-[#00e599]" :
+                        "bg-white/5 text-white/20"
                       }`}>
-                        {done ? <IconCheck className="w-4 h-4 text-[#00e599]" /> :
-                         active ? <div className="w-3 h-3 border-2 border-[#00e599] border-t-transparent rounded-full animate-spin" /> :
-                         <step.icon className="w-4 h-4 text-white/30" />}
+                        {done ? "✓" : `0${idx + 1}`}
                       </div>
-                      <span className={`text-[9px] font-bold uppercase tracking-wider ${
-                        done ? "text-[#00e599]" : active ? "text-white" : "text-white/20"
-                      }`}>{step.label}</span>
+
+                      {/* Icon */}
+                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 transition-all duration-500 ${
+                        active ? "bg-[#00e599]/10 border border-[#00e599]/40" :
+                        done ? "bg-[#00e599]/10 border border-[#00e599]/20" :
+                        "bg-white/5 border border-white/5"
+                      }`}>
+                        {active ? (
+                          <div className="w-4 h-4 border-2 border-[#00e599] border-t-transparent rounded-full animate-spin" />
+                        ) : (
+                          <step.icon className={`w-4 h-4 ${done ? "text-[#00e599]" : "text-white/30"}`} />
+                        )}
+                      </div>
+
+                      {/* Content */}
+                      <div className="flex-1 min-w-0">
+                        <p className={`text-sm font-semibold ${
+                          done ? "text-[#00e599]" : active ? "text-white" : "text-white/30"
+                        }`}>
+                          {step.label === "AI" ? "AI Security Audit" :
+                           step.label === "Clone" ? "Clone Repository" :
+                           step.label === "Exploit" ? "Generate Exploit Test" :
+                           step.label === "Docker" ? "Docker Sandbox Execution" :
+                           step.label === "Patch" ? "Generate Security Patch" :
+                           step.label === "Verify" ? "Verify Patch in Sandbox" :
+                           "Create Pull Request"}
+                        </p>
+                        <p className={`text-[11px] mt-0.5 ${
+                          done ? "text-[#00e599]/60" : active ? "text-white/40" : "text-white/15"
+                        }`}>
+                          {step.label === "AI" ? "GPT-4o analyzes code for 7 vulnerability categories" :
+                           step.label === "Clone" ? "Fetching source files from GitHub" :
+                           step.label === "Exploit" ? "Writing pytest that proves the vulnerability" :
+                           step.label === "Docker" ? "Running exploit in isolated container (no network, 512MB)" :
+                           step.label === "Patch" ? "AI generates a complete fixed version of the file" :
+                           step.label === "Verify" ? "Re-running exploit against patched code" :
+                           "Branch, commit patch + test, open PR on GitHub"}
+                        </p>
+                      </div>
+
+                      {/* Status */}
+                      <div className="shrink-0">
+                        {done && <span className="text-[10px] font-bold text-[#00e599] bg-[#00e599]/10 px-2 py-1 rounded-md">DONE</span>}
+                        {active && <span className="text-[10px] font-bold text-[#00e599] animate-pulse">RUNNING</span>}
+                      </div>
+
+                      {/* Animated bar for active */}
+                      {active && (
+                        <div className="absolute bottom-0 left-0 right-0 h-[2px] overflow-hidden rounded-b-2xl">
+                          <div className="h-full bg-gradient-to-r from-transparent via-[#00e599] to-transparent animate-[shimmer_2s_infinite]" 
+                               style={{ width: "50%", animation: "shimmer 2s infinite linear" }} />
+                        </div>
+                      )}
                     </div>
                   );
                 })}
@@ -221,9 +292,10 @@ export default function Home() {
                     <div className="w-2 h-2 rounded-full bg-yellow-500/60" />
                     <div className="w-2 h-2 rounded-full bg-green-500/60" />
                   </div>
-                  <span className="text-[10px] font-mono text-white/30 ml-2">patchforge — live</span>
+                  <span className="text-[10px] font-mono text-white/30 ml-2">patchforge — live output</span>
+                  <span className="ml-auto text-[9px] font-mono text-white/20">{logEvents.length} events</span>
                 </div>
-                <div className="p-4 max-h-72 overflow-y-auto font-mono text-[11px] leading-relaxed space-y-0.5">
+                <div className="p-4 max-h-56 overflow-y-auto font-mono text-[11px] leading-relaxed space-y-0.5">
                   {logEvents.map((e, i) => (
                     <p key={i} className={
                       e.includes("[Error]") ? "text-red-400" :
@@ -232,7 +304,7 @@ export default function Home() {
                       e.includes("[Exploit]") || e.includes("[Sandbox]") ? "text-amber-400" :
                       e.includes("[Auditor]") ? "text-sky-400" :
                       e.includes("[Clone]") ? "text-purple-400" :
-                      "text-white/50"
+                      "text-white/40"
                     }>{e}</p>
                   ))}
                   {isAuditing && <span className="inline-block w-1.5 h-3.5 bg-[#00e599] animate-pulse rounded-sm" />}
@@ -257,13 +329,13 @@ export default function Home() {
 
                   {auditResults.prUrls.length > 0 && (
                     <div className="rounded-xl p-4 bg-[#00e599]/5 border border-[#00e599]/20 space-y-2">
-                      <p className="text-[10px] font-bold text-[#00e599] uppercase tracking-widest">Pull Requests</p>
+                      <p className="text-[10px] font-bold text-[#00e599] uppercase tracking-widest">Pull Requests Created</p>
                       {auditResults.prUrls.map((url, i) => (
                         <a key={i} href={url} target="_blank" rel="noopener noreferrer"
-                          className="flex items-center gap-2 px-3 py-2 rounded-lg bg-black/40 border border-white/5 hover:border-[#00e599]/30 transition-all cursor-pointer group">
-                          <IconGitPR className="w-3.5 h-3.5 text-[#00e599]" />
+                          className="flex items-center gap-2 px-3 py-2.5 rounded-lg bg-black/40 border border-white/5 hover:border-[#00e599]/30 transition-all cursor-pointer group">
+                          <IconGitPR className="w-4 h-4 text-[#00e599]" />
                           <span className="text-xs font-mono text-white/60 group-hover:text-white truncate">{url}</span>
-                          <span className="ml-auto text-[#00e599] text-xs">→</span>
+                          <span className="ml-auto text-[#00e599] text-sm font-bold">→</span>
                         </a>
                       ))}
                     </div>
