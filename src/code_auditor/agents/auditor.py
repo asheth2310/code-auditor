@@ -1,9 +1,10 @@
 """Auditor Agent — performs static security analysis on source code."""
 import json
 import logging
-from langchain_openai import ChatOpenAI
+from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.messages import SystemMessage, HumanMessage
 from ..state import AuditorState
+from ..config import get_settings
 
 logger = logging.getLogger(__name__)
 
@@ -45,7 +46,12 @@ def auditor_node(state: AuditorState) -> dict:
     for file_path, content in source_files.items():
         code_context += f"\n--- FILE: {file_path} ---\n{content}\n"
     
-    llm = ChatOpenAI(model="gpt-4o", temperature=0)
+    settings = get_settings()
+    llm = ChatGoogleGenerativeAI(
+        model="gemini-2.0-flash",
+        google_api_key=settings.google_api_key,
+        temperature=0,
+    )
     
     messages = [
         SystemMessage(content=AUDIT_SYSTEM_PROMPT),

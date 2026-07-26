@@ -5,7 +5,7 @@ from pydantic import Field
 class Settings(BaseSettings):
     """Application configuration loaded from environment variables."""
     github_token: str = Field(..., description="GitHub Personal Access Token with repo scope")
-    openai_api_key: str = Field(..., description="OpenAI API key for LLM agents")
+    google_api_key: str = Field(..., description="Google Gemini API key")
     docker_image: str = Field(default="python:3.11-slim", description="Docker image for sandbox")
     sandbox_timeout: int = Field(default=30, description="Max seconds for sandbox execution")
     max_patch_retries: int = Field(default=3, description="Max retry attempts for patch agent")

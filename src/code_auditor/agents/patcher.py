@@ -1,8 +1,9 @@
 """Patch Agent."""
 import logging
-from langchain_openai import ChatOpenAI
+from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.messages import SystemMessage, HumanMessage
 from ..state import AuditorState
+from ..config import get_settings
 
 logger = logging.getLogger(__name__)
 
@@ -25,7 +26,12 @@ def patcher_node(state: AuditorState) -> dict:
     patch_attempts = state.get("patch_attempts", 0)
     sandbox_stderr = state.get("sandbox_stderr", "")
     
-    llm = ChatOpenAI(model="gpt-4o", temperature=0)
+    settings = get_settings()
+    llm = ChatGoogleGenerativeAI(
+        model="gemini-2.0-flash",
+        google_api_key=settings.google_api_key,
+        temperature=0,
+    )
     
     prompt = f"Vulnerability Details:\n{current_vuln}\n\nOriginal Source Code:\n{source_code}"
     if patch_attempts > 0 and sandbox_stderr:
