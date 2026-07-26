@@ -32,8 +32,21 @@ def pr_creator_node(state: AuditorState) -> dict:
     gh = GitHubService(token=settings.github_token)
 
     try:
-        # Create feature branch
-        gh.create_branch(repo_name, branch_name)
+        # Try to create feature branch — if 404, we likely don't have write access
+        # In that case, fork the repo first
+        try:
+            gh.create_branch(repo_name, branch_name)
+        except Exception as branch_err:
+            if "404" in str(branch_err):
+                # Fork the repo and create PR on our fork
+                logger.info(f"No write access to {repo_name}, forking...")
+                fork = gh.client.get_user().create_fork(gh.client.get_repo(repo_name))
+                import time
+                time.sleep(3)  # Wait for fork to be ready
+                repo_name = fork.full_name
+                gh.create_branch(repo_name, branch_name)
+            else:
+                raise
 
         # Commit patched file and exploit test atomically
         test_file_path = f"tests/test_{vuln_type}_exploit.py"
