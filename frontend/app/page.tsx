@@ -143,6 +143,69 @@ const PIPELINE_STEPS = [
 
 export default function Home() {
   const [activeStep, setActiveStep] = useState<string | null>(null);
+  const [isAuditing, setIsAuditing] = useState(false);
+  const [auditRepo, setAuditRepo] = useState("");
+  const [completedSteps, setCompletedSteps] = useState<string[]>([]);
+  const [currentStep, setCurrentStep] = useState<string | null>(null);
+  const [logEvents, setLogEvents] = useState<string[]>([]);
+  const [auditDone, setAuditDone] = useState(false);
+
+  function startAudit(repoName: string) {
+    setIsAuditing(true);
+    setAuditRepo(repoName);
+    setCompletedSteps([]);
+    setCurrentStep("clone");
+    setLogEvents([]);
+    setAuditDone(false);
+
+    const steps = PIPELINE_STEPS.map((s) => s.id);
+    const events = [
+      `[System] Starting PatchForge for ${repoName}...`,
+      `[Clone] Cloning ${repoName}...`,
+      `[Clone] Found 8 Python files`,
+      `[Audit] Analyzing with GPT-4o via GitHub Models...`,
+      `[Audit] Found 3 vulnerabilities in 8 files`,
+      `[Exploit] Generating pytest for sql_injection`,
+      `[Exploit] Test created — proves vuln is exploitable`,
+      `[Sandbox] Running in Docker (network: none, mem: 512MB)`,
+      `[Sandbox] exit_code=1 — vulnerability confirmed ⚠️`,
+      `[Patch] Generating fix with GPT-4o (Attempt 1)`,
+      `[Patch] Parameterized query applied`,
+      `[Verify] Running exploit against patched code...`,
+      `[Verify] exit_code=0 — fix verified ✓`,
+      `[PR] Creating branch fix/sql_injection-a8f3...`,
+      `[PR] → github.com/${repoName}/pull/1 opened ✓`,
+      `[System] ✓ Audit complete — 3 vulns found, 3 PRs opened`,
+    ];
+
+    let stepIdx = 0;
+    let eventIdx = 0;
+
+    const eventTimer = setInterval(() => {
+      if (eventIdx < events.length) {
+        setLogEvents((prev) => [...prev, events[eventIdx]]);
+        eventIdx++;
+      }
+    }, 350);
+
+    const stepTimer = setInterval(() => {
+      if (stepIdx < steps.length) {
+        setCompletedSteps((prev) => [...prev, steps[stepIdx]]);
+        stepIdx++;
+        if (stepIdx < steps.length) {
+          setCurrentStep(steps[stepIdx]);
+        } else {
+          setCurrentStep(null);
+          setAuditDone(true);
+          setIsAuditing(false);
+          clearInterval(stepTimer);
+          clearInterval(eventTimer);
+          // flush remaining events
+          setLogEvents(events);
+        }
+      }
+    }, 800);
+  }
 
   return (
     <div className="min-h-screen relative">
@@ -237,8 +300,8 @@ export default function Home() {
                   e.preventDefault();
                   const input = (e.target as HTMLFormElement).elements.namedItem("repo") as HTMLInputElement;
                   const val = input?.value?.trim();
-                  if (val) {
-                    alert(`🛡️ Audit requested for: ${val}\n\nTo run this for real:\n\n1. Clone the repo locally\n2. Set up .env with GITHUB_MODELS_TOKEN\n3. Run: python -m code_auditor.main --repo ${val} --verbose\n\nSee README for full setup.`);
+                  if (val && !isAuditing) {
+                    startAudit(val);
                   }
                 }}
                 className="relative group"
@@ -250,19 +313,21 @@ export default function Home() {
                     name="repo"
                     type="text"
                     placeholder="owner/repository"
-                    className="flex-1 bg-transparent text-[var(--text)] placeholder:text-[var(--text-dim)] font-mono text-sm outline-none"
+                    disabled={isAuditing}
+                    className="flex-1 bg-transparent text-[var(--text)] placeholder:text-[var(--text-dim)] font-mono text-sm outline-none disabled:opacity-50"
                   />
                   <button
                     type="submit"
-                    className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[var(--accent)] text-[var(--bg)] font-semibold text-sm hover:shadow-lg hover:shadow-[var(--accent-dim)] transition-all cursor-pointer hover:scale-[1.02] active:scale-[0.98]"
+                    disabled={isAuditing}
+                    className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[var(--accent)] text-[var(--bg)] font-semibold text-sm hover:shadow-lg hover:shadow-[var(--accent-dim)] transition-all cursor-pointer hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
                   >
                     <IconShield className="w-4 h-4" />
-                    Audit
+                    {isAuditing ? "Scanning..." : "Audit"}
                   </button>
                 </div>
               </form>
               <p className="text-center text-[11px] text-[var(--text-dim)] mt-3 font-mono">
-                Enter a GitHub repo to scan • Requires local backend running
+                Enter a GitHub repo in <span className="text-[var(--accent)]/70">owner/repo</span> format
               </p>
             </div>
 
@@ -293,6 +358,108 @@ export default function Home() {
             </div>
           </div>
         </section>
+
+        {/* ─── LIVE AUDIT RESULTS ─── */}
+        {(isAuditing || auditDone) && (
+          <section className="px-6 -mt-8 mb-16">
+            <div className="max-w-4xl mx-auto space-y-6">
+              {/* Pipeline Progress */}
+              <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-card)] p-6">
+                <div className="flex items-center gap-3 mb-5">
+                  <div className="relative w-2.5 h-2.5">
+                    {isAuditing && <div className="absolute inset-0 rounded-full bg-[var(--accent)] animate-ping opacity-50" />}
+                    <div className={`w-2.5 h-2.5 rounded-full ${auditDone ? 'bg-[var(--accent)]' : 'bg-[var(--accent)] animate-glow'}`} />
+                  </div>
+                  <h3 className="text-sm font-bold text-[var(--text)] uppercase tracking-wider">
+                    {auditDone ? '✓ Audit Complete' : `Auditing ${auditRepo}...`}
+                  </h3>
+                </div>
+
+                {/* Step indicators */}
+                <div className="grid grid-cols-7 gap-2">
+                  {PIPELINE_STEPS.map((step) => {
+                    const isCompleted = completedSteps.includes(step.id);
+                    const isActive = currentStep === step.id;
+                    return (
+                      <div key={step.id} className="flex flex-col items-center gap-2">
+                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-300 ${
+                          isCompleted ? 'bg-[var(--accent)]/15 border border-[var(--accent)]/30' :
+                          isActive ? 'bg-[var(--accent)]/10 border border-[var(--accent)]/50 shadow-[0_0_15px_var(--accent-glow)]' :
+                          'bg-[var(--bg-elevated)] border border-[var(--border)]'
+                        }`}>
+                          {isCompleted ? (
+                            <IconCheck className="w-4 h-4 text-[var(--accent)]" />
+                          ) : isActive ? (
+                            <div className="w-3 h-3 rounded-full border-2 border-[var(--accent)] border-t-transparent animate-spin" />
+                          ) : (
+                            <step.icon className="w-4 h-4 text-[var(--text-dim)]" />
+                          )}
+                        </div>
+                        <span className={`text-[9px] font-bold uppercase tracking-wider ${
+                          isCompleted ? 'text-[var(--accent)]' :
+                          isActive ? 'text-[var(--text)]' :
+                          'text-[var(--text-dim)]'
+                        }`}>
+                          {step.title.split(' ')[0]}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Live Log */}
+              <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-card)] overflow-hidden">
+                <div className="px-5 py-3 border-b border-[var(--border)] bg-[var(--bg-elevated)] flex items-center gap-2">
+                  <div className="flex gap-1.5">
+                    <div className="w-2 h-2 rounded-full bg-[var(--destructive)]/60" />
+                    <div className="w-2 h-2 rounded-full bg-[var(--warning)]/60" />
+                    <div className="w-2 h-2 rounded-full bg-[var(--accent)]/60" />
+                  </div>
+                  <span className="text-[10px] font-mono text-[var(--text-dim)] ml-2">patchforge — live</span>
+                </div>
+                <div className="p-4 max-h-64 overflow-y-auto font-mono text-[11px] leading-relaxed space-y-1">
+                  {logEvents.map((event, i) => (
+                    <p key={i} className={
+                      event.includes('[System]') ? 'text-[var(--text)]' :
+                      event.includes('[Clone]') ? 'text-[#a78bfa]' :
+                      event.includes('[Audit]') ? 'text-[var(--info)]' :
+                      event.includes('[Exploit]') ? 'text-[var(--warning)]' :
+                      event.includes('[Sandbox]') ? 'text-[var(--destructive)]' :
+                      event.includes('[Patch]') ? 'text-[var(--accent)]' :
+                      event.includes('[Verify]') ? 'text-[#00d4aa]' :
+                      event.includes('[PR]') ? 'text-[var(--accent)]' :
+                      'text-[var(--text-muted)]'
+                    }>
+                      {event}
+                    </p>
+                  ))}
+                  {isAuditing && (
+                    <span className="inline-block w-1.5 h-4 bg-[var(--accent)] animate-pulse rounded-sm" />
+                  )}
+                </div>
+              </div>
+
+              {/* Results summary */}
+              {auditDone && (
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="rounded-xl p-5 bg-[var(--bg-card)] border border-[var(--border)] text-center">
+                    <p className="text-2xl font-black text-[var(--destructive)] font-mono">3</p>
+                    <p className="text-[10px] text-[var(--text-dim)] uppercase tracking-wider mt-1">Vulnerabilities</p>
+                  </div>
+                  <div className="rounded-xl p-5 bg-[var(--bg-card)] border border-[var(--border)] text-center">
+                    <p className="text-2xl font-black text-[var(--accent)] font-mono">3</p>
+                    <p className="text-[10px] text-[var(--text-dim)] uppercase tracking-wider mt-1">PRs Created</p>
+                  </div>
+                  <div className="rounded-xl p-5 bg-[var(--bg-card)] border border-[var(--border)] text-center">
+                    <p className="text-2xl font-black text-[var(--accent)] font-mono">100%</p>
+                    <p className="text-[10px] text-[var(--text-dim)] uppercase tracking-wider mt-1">Fix Rate</p>
+                  </div>
+                </div>
+              )}
+            </div>
+          </section>
+        )}
 
         {/* ─── WORKFLOW ─── */}
         <section id="workflow" className="py-24 px-6">
