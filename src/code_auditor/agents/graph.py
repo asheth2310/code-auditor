@@ -22,6 +22,9 @@ def clone_repo(state: Any) -> dict:
     settings = get_settings()
     gh = GitHubService(token=settings.github_token)
     repo_name = state["repo_name"]
+    
+    # Strip any URL prefix — ensure we just have "owner/repo"
+    repo_name = repo_name.replace("https://github.com/", "").replace("http://github.com/", "").replace("www.github.com/", "").rstrip("/")
 
     logger.info(f"Cloning repository {repo_name}...")
     import tempfile

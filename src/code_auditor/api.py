@@ -68,7 +68,7 @@ async def start_audit(request: AuditRequest):
     import uuid
     
     audit_id = str(uuid.uuid4())[:8]
-    repo_name = request.repo_name
+    repo_name = request.repo_name.replace("https://github.com/", "").replace("http://github.com/", "").replace("www.github.com/", "").rstrip("/")
     
     if not "/" in repo_name:
         raise HTTPException(status_code=400, detail="repo_name must be in owner/repo format")
