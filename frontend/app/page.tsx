@@ -176,7 +176,7 @@ export default function Home() {
     fetch(`${API_URL}/audit`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ repo_name: repoName }),
+      body: JSON.stringify({ repo_name: repoName.replace(/^https?:\/\/(www\.)?github\.com\//, "") }),
     })
       .then((res) => res.json())
       .then((data) => {
@@ -346,7 +346,7 @@ export default function Home() {
                   <input
                     name="repo"
                     type="text"
-                    placeholder="owner/repository"
+                    placeholder="owner/repo or paste GitHub URL"
                     disabled={isAuditing}
                     className="flex-1 bg-transparent text-[var(--text)] placeholder:text-[var(--text-dim)] font-mono text-sm outline-none disabled:opacity-50"
                   />
